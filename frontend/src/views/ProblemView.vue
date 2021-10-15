@@ -194,7 +194,7 @@ export default class ProblemView extends Vue {
     submits.forEach(element => element.scrollTop = element.scrollHeight);
     const userMessages = [...document.getElementsByTagName("img")];
     userMessages.forEach(element =>
-      element.classList.contains("avatar") ? element.src = this.avatar_url : 0);
+      element.classList.contains("avatar") ? element.src = this.avatarUrl : 0);
 
     window.addEventListener("keydown", event =>{
       if (event.key == 'Escape'){
@@ -207,7 +207,7 @@ export default class ProblemView extends Vue {
     this.displayCatsPackage = !this.displayCatsPackage;
   }
 
-  get avatar_url() {
+  get avatarUrl() {
     if (this.user && this.user.avatar_url)
       return this.user.thumbnail;
     return "https://www.winhelponline.com/blog/wp-content/uploads/2017/12/user.png";

@@ -39,52 +39,33 @@
             <cv-structured-list
               v-if="submits" class="submit-list"
               condensed selectable @change="changeCurrentSubmit">
-              <template slot="headings">
-                <cv-structured-list-heading>ID</cv-structured-list-heading>
-                <cv-structured-list-heading>Статус</cv-structured-list-heading>
-              </template>
-              <template slot="items">
-                <cv-structured-list-item
-                  v-for="submit in userSubmits"
-                  :key="submit.id"
-                  :checked="checkedSubmit(submit)"
-                  :value="submit.id.toString()"
-                  name="submit"
-                  class="submit-table-item">
-                  <cv-structured-list-data>{{ submit.id }}</cv-structured-list-data>
-                  <cv-structured-list-data>
-                    <submit-status :submit="submit"/>
-                  </cv-structured-list-data>
-                </cv-structured-list-item>
-              </template>
+              <message-component
+              v-for="message in messages"
+              :key="message.id"
+              :message="message"
+              >
+
+              </message-component>
             </cv-structured-list>
             <cv-tile v-else class="submit-list no-submits" kind="standard">
-
-    <message-component
-    v-for="message in messages"
-    :key="message.id"
-    :message="message"
-    >
-
-    </message-component>
-
-
+              <h2>Oops</h2>
+              <p>Пока ничего не отправлено :(</p>
             </cv-tile>
             <cv-text-input class="searchbar"
-  :light="light"
-  :label="''"
-  :value="''"
-  :disabled="false"
-  :type="''"
-  :password-visible="false"
-  :placeholder="'Введите сообщение'"
-   v-on:keydown.enter="inputMessage"
-  v-model.trim="message">
-</cv-text-input>
+            :light="light"
+            :label="''"
+            :value="''"
+            :disabled="false"
+            :type="''"
+            :password-visible="false"
+            :placeholder="'Введите сообщение'"
+            v-on:keydown.enter="messageForButton"
+            v-model.trim="message">
+            </cv-text-input>
           </div>
         </div>
       </cv-column>
-      <cv-column v-if="isStaff">
+      <cv-column v-if="isStaff && !displayCatsPackage">
         <div class="item">
           <cv-structured-list class="student-list" condensed selectable @change="changeStudent">
             <template slot="headings">
@@ -105,6 +86,11 @@
           </cv-structured-list>
         </div>
       </cv-column>
+
+      <cv-column v-if="displayCatsPackage">
+        <cats-package-window></cats-package-window>
+      </cv-column>
+
     </cv-row>
   </div>
 </template>
@@ -119,11 +105,12 @@ import SubmitModel from '@/models/SubmitModel';
 import problemStore from '@/store/modules/problem';
 import submitStore from '@/store/modules/submit';
 import userStore from '@/store/modules/user';
-import urls from '@/utils/urls.json'
 import { Component, Prop, Vue } from 'vue-property-decorator';
+import LogEventModel from "@/models/LogEventModel";
+import CatsPackageWindow from "@/components/CatsPackageWindow.vue";
 
 
-@Component({ components: { SubmitComponent, ProblemDescription, SubmitStatus, UserComponent, MessageComponent } })
+@Component({ components: { CatsPackageWindow, SubmitComponent, ProblemDescription, SubmitStatus, UserComponent, MessageComponent } })
 export default class ProblemView extends Vue {
   @Prop({ required: false, default: null }) submitIdProp!: number | null;
   public submitId = this.submitIdProp;
@@ -136,6 +123,7 @@ export default class ProblemView extends Vue {
   private readonly courseId = Number(this.$route.params.courseId);
 
   private displayProblem = false;
+  private displayCatsPackage = false;
 
   light = false;
 
@@ -152,7 +140,7 @@ export default class ProblemView extends Vue {
     return this.submitStore.submits;
   }
 
-  get messages() {
+  get msgs() {
     const smth = [];
     for (let i = 0; i < 20; i++) {
       const newMsg = {"type": "message", "text": "test", "sender": this.user, "lessonId": 1,
@@ -161,6 +149,7 @@ export default class ProblemView extends Vue {
     }
     return smth;
   }
+  messages: Array<LogEventModel> = this.msgs
 
   checkedSubmit(submit: SubmitModel): boolean {
     if (!this.submitIdProp)
@@ -203,8 +192,25 @@ export default class ProblemView extends Vue {
   async mounted() {
     const submits = [...document.getElementsByClassName("submit-list")];
     submits.forEach(element => element.scrollTop = element.scrollHeight);
-    const userMessages = [...document.getElementsByClassName("avatar", "student")];
-    userMessages.forEach(element => element.src = urls.notSelectedAvatar);
+    const userMessages = [...document.getElementsByTagName("img")];
+    userMessages.forEach(element =>
+      element.classList.contains("avatar") ? element.src = this.avatar_url : 0);
+
+    window.addEventListener("keydown", event =>{
+      if (event.key == 'Escape'){
+        this.visionCatsPackage();
+      }
+    });
+  }
+
+  visionCatsPackage(){
+    this.displayCatsPackage = !this.displayCatsPackage;
+  }
+
+  get avatar_url() {
+    if (this.user && this.user.avatar_url)
+      return this.user.thumbnail;
+    return "https://www.winhelponline.com/blog/wp-content/uploads/2017/12/user.png";
   }
 
   checkedStudent(studentId: string): boolean {
@@ -216,17 +222,11 @@ export default class ProblemView extends Vue {
   }
 
   messageForButton(message: string) {
-    let newMessage = "";
-    let counter = 0;
-    for (let i = 0; i < message.length; i++) {
-      if (counter == 23) {
-        newMessage += "\n";
-        counter = 0;
-      }
-      counter++;
-      newMessage += message[i];
-    }
-    return newMessage
+    console.log(document.getElementsByClassName("searchbar")[0])
+    const newMessage: LogEventModel = {"name": "logEvent", "type": "message", "text": message,
+      sender: this.user, id: this.messages.length+2,
+      lessonId: this.courseId, courseId: this.courseId}
+    this.messages.push(newMessage);
   }
 
   hideProblem() {
